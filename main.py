@@ -589,5 +589,5 @@ while True:
                     else:
                         raise Exception("Action không hợp lệ.")
                 except:
-                    print("\nCó vẻ như state không hợp lệ, hàm getValidActions đang không thẻ render ra action nào.\n")
+                    print("\nCó vẻ như state không hợp lệ, hàm getValidActions đang không thể render ra action nào.\n")
     clock.tick(60)
