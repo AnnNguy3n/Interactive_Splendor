@@ -30,7 +30,7 @@ def __circlepoints(r):
 def __render_outline(text, font, font_color):
     o_color = (255-font_color[0], 255-font_color[1], 255-font_color[2])
     opx = 1
-
+    
     text_surface = font.render(text, True, font_color).convert_alpha()
     w = text_surface.get_width() + 2*opx
     h = font.get_height()

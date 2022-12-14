@@ -7,14 +7,13 @@ background = __pg.image.load("Extended_module/Imgs/background.png")
 logo = __pg.image.load("Extended_module/Imgs/logo.jpg")
 
 normal_card = [__pg.image.load("Extended_module/Imgs/Cards"+f"/{i}.png") for i in range(90)]
+hidden_card = {
+    i: __pg.image.load("Extended_module/Imgs/Cards"+f"/hide_card_{i}.png") for i in range(1, 4)
+}
 normal_card_size = normal_card[0].get_size()
 
 noble_card = [__pg.image.load("Extended_module/Imgs/Cards"+f"/{i+90}.png") for i in range(10)]
 noble_card_size = noble_card[0].get_size()
-
-hidden_card = {
-    i: __pg.image.load("Extended_module/Imgs/Cards"+f"/hide_card_{i}.png") for i in range(1, 4)
-}
 
 stock = {
     key: __pg.image.load("Extended_module/Imgs"+f"/{key}.png") for key in ["red", "blue", "green", "black", "white", "gold"]
@@ -41,4 +40,4 @@ def scale(name, size):
         for key in stock.keys():
             stock[key] = __pg.transform.smoothscale(stock[key], size)
     else:
-        raise Exception(".")
+        raise Exception("Invalid name.")

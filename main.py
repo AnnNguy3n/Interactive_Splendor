@@ -6,7 +6,7 @@ import agent
 
 
 pg.init()
-pg.display.set_icon(pg.image.Splendor.logo)
+pg.display.set_icon(pg.transform.smoothscale(pg.image.Splendor.logo, (32, 32)))
 pg.display.set_caption("VIS - Splendor")
 
 pg.image.Splendor.scale("background", pg.image.Splendor.SCREEN_SIZE)
@@ -39,16 +39,16 @@ class Sprite(pg.sprite.Sprite):
         self.pos = pos
         self.align = align
         self.set_image(img)
-
+    
     def set_image(self, img):
         self.image = img
         self.rect = img.get_rect()
         setattr(self.rect, self.align, self.pos)
-
+    
     def set_value(self, new):
         rect_size = self.image.get_size()
         font_size = 30 if rect_size[0] == 40 else 35
-        self.set_image(pg.draw.multiline_text_surface(str(new), rect_size=rect_size, font_size=font_size))
+        self.set_image(pg.draw.multiline_text_surface(str(new), font_size=font_size, rect_size=rect_size))
 
 
 # Data
@@ -128,142 +128,158 @@ for i in range(4):
     }
 
 
+# Layer
+layer = pg.sprite.Group()
+for key in data.keys():
+    for key_start in ["board_token", "player_token", "got", "discount", "score"]:
+        if key.startswith(key_start):
+            layer.add(data[key]["sprite"])
+            data[key]["sprite"].set_value(0)
+            break
+
+
 #
 def draw_dashed_rectangles(screen, data, exclude_keys):
     for key in data.keys():
         if key not in exclude_keys:
-            if key.startswith("lv_") or key.startswith("noble") or key.startswith("reserved"):
-                if type(data[key]["card_id"]) == float:
-                    pg.draw.dashed_rectangle(screen, data[key]["sprite"].rect)
+            for key_start in ["lv_", "noble", "reserved"]:
+                if key.startswith(key_start):
+                    if type(data[key]["card_id"]) == float:
+                        pg.draw.dashed_rectangle(screen, data[key]["sprite"].rect)
+                    
+                    break
+            else:
+                for key_start in ["board_token", "player_token", "got", "discount", "score"]:
+                    if key.startswith(key_start):
+                        pg.draw.dashed_rectangle(screen, data[key]["sprite"].rect)
 
-            elif key.startswith("board_token") or key.startswith("got") or key.startswith("player_token") or key.startswith("discount") or key.startswith("score"):
-                pg.draw.dashed_rectangle(screen, data[key]["sprite"].rect)
-
-
-#
-layer = pg.sprite.Group()
-for key in data.keys():
-    if key.startswith("board_token") or key.startswith("player_token") or key.startswith("got") or key.startswith("discount") or key.startswith("score"):
-        layer.add(data[key]["sprite"])
-        data[key]["sprite"].set_value(0)
 
 #
-screen.blit(pg.image.Splendor.background, (0, 0))
-draw_dashed_rectangles(screen, data, [])
-layer.draw(screen)
+def draw_screen(exclude_keys):
+    screen.blit(pg.image.Splendor.background, (0, 0))
+    layer.draw(screen)
+    draw_dashed_rectangles(screen, data, exclude_keys)
+
+draw_screen([])
 pg.display.flip()
 
 
 #
-def get_user_input(key, data, screen, layer):
+def if_press_quit_button(event):
+    if event.type == pg.QUIT:
+        pg.quit()
+        sys.exit()
+
+
+def get_key(mouse_pos, data):
+    for key in data.keys():
+        if data[key]["sprite"].rect.collidepoint(mouse_pos[0], mouse_pos[1]):
+            return key
+    
+    return "Nothing"
+
+
+def get_user_edit(key, data, screen, layer):
     def sub_0():
+        draw_screen([key])
+        pg.draw.rect(screen, (0, 0, 0), input_rect, 2)
+    
+    def sub_1():
+        sub_0()
+        screen.blit(pg.draw.multiline_text_surface(user_txt, font_size=user_font_size, rect_size=(input_rect.width, input_rect.height)), input_rect.topleft)
+
+    def sub_2():
         if len(user_txt) > 0:
             data[key]["num"] = int(user_txt)
             data[key]["sprite"].set_value(int(user_txt))
+
         layer.add(data[key]["sprite"])
-        screen.blit(pg.image.Splendor.background, (0, 0))
-        layer.draw(screen)
-        draw_dashed_rectangles(screen, data, [])
-        pg.display.flip()
+        draw_screen([])
 
-    def sub_1():
-        screen.blit(pg.image.Splendor.background, (0, 0))
-        layer.draw(screen)
-        draw_dashed_rectangles(screen, data, [key])
-        pg.draw.rect(screen, (0, 0, 0), input_rect, 2)
-        screen.blit(pg.draw.multiline_text_surface(user_txt, user_font_size, rect_size=(input_rect.width, input_rect.height)), input_rect.topleft)
-        pg.display.flip()
+    layer.remove(data[key]["sprite"])
+    for key_start in ["board_token", "player_token", "got", "discount", "score"]:
+        if key.startswith(key_start):
+            input_rect = data[key]["sprite"].rect.copy()
+            input_rect.left -= 10
+            input_rect.width += 20
+            user_txt = ""
+            user_font_size = 30 if data[key]["sprite"].image.get_size()[0] == 40 else 35
+            max_len = 2 if key.startswith("score") else 1
+            sub_0()
+            pg.display.flip()
+            
+            while True:
+                for event in pg.event.get():
+                    if_press_quit_button(event)
 
-    if key.startswith("board_token") or key.startswith("player_token") or key.startswith("got") or key.startswith("discount") or key.startswith("score"):
-        layer.remove(data[key]["sprite"])
-        input_rect = data[key]["sprite"].rect.copy()
-        input_rect.left -= 10
-        input_rect.width += 20
-        user_txt = ""
-        user_font_size = 30 if data[key]["sprite"].image.get_size()[0] == 40 else 35
-        max_len = 2 if key.startswith("score") else 1
-
-        screen.blit(pg.image.Splendor.background, (0, 0))
-        layer.draw(screen)
-        draw_dashed_rectangles(screen, data, [key])
-        pg.draw.rect(screen, (0, 0, 0), input_rect, 2)
-        pg.display.flip()
-
-        while True:
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    pg.quit()
-                    sys.exit()
-
-                if event.type == pg.KEYDOWN:
-                    if event.key == pg.K_BACKSPACE:
-                        if len(user_txt) > 0:
-                            user_txt = user_txt[:-1]
-                            sub_1()
-                    elif event.key in [getattr(pg, f"K_{i}") for i in range(10)] + [getattr(pg, f"K_KP{i}") for i in range(10)]:
-                        if len(user_txt) < max_len:
+                    if event.type == pg.KEYDOWN:
+                        if event.key == pg.K_BACKSPACE:
+                            if len(user_txt) > 0:
+                                user_txt = user_txt[:-1]
+                                sub_1()
+                                pg.display.flip()
+                        elif event.key in [getattr(pg, f"K_{i}") for i in range(10)] + [getattr(pg, f"K_KP{i}") for i in range(10)]:
                             user_txt += event.unicode
                             sub_1()
+                            pg.display.flip()
                             if len(user_txt) == max_len:
-                                sub_0()
+                                sub_2()
+                                pg.display.flip()
                                 return
-                    elif event.key == pg.K_KP_ENTER or event.key == pg.K_RETURN:
-                        sub_0()
+                        elif event.key == pg.K_KP_ENTER or event.key == pg.K_RETURN:
+                            sub_2()
+                            pg.display.flip()
+                            return
+                    
+                    elif event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
+                        sub_2()
+                        pg.display.flip()
                         return
-                elif event.type == pg.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        sub_0()
-                        return
+            break
+    
+    def get_idx_from_list_pos(list_pos, height):
+        while True:
+            for event in pg.event.get():
+                if_press_quit_button(event)
 
-    elif key.startswith("noble"):
-        layer.remove(data[key]["sprite"])
-        input_rect = pg.Surface((700, 790))
+                if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
+                    mouse_pos = pg.mouse.get_pos()
+                    pick = -1.0
+                    for i in range(len(list_pos)):
+                        pos = list_pos[i]
+                        if pg.Rect(pos[0], pos[1], 100, height).collidepoint(mouse_pos):
+                            pick = i
+                            break
+                    
+                    return pick
+    
+    if key.startswith("noble"):
+        input_rect = pg.Surface((740, 320))
         list_pos = []
         for i in range(10):
             a = i // 5
             b = i % 5
-            list_pos.append((30+140*b, 30+140*a))
-
-        screen.blit(pg.image.Splendor.background, (0, 0))
-        layer.draw(screen)
-        draw_dashed_rectangles(screen, data, [key])
-        screen.blit(input_rect, (10, 10))
+            list_pos.append((80+140*b, 80+140*a))
+        
+        draw_screen([key])
+        screen.blit(input_rect, (40, 40))
         for i in range(10):
             screen.blit(pg.image.Splendor.noble_card[i], list_pos[i])
         pg.display.flip()
 
-        while True:
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    pg.quit()
-                    sys.exit()
-
-                if event.type == pg.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        mouse_pos = pg.mouse.get_pos()
-                        pick = -1.0
-                        for i in range(10):
-                            pos = list_pos[i]
-                            if pg.Rect(pos[0], pos[1], 100, 100).collidepoint(mouse_pos):
-                                pick = i
-                                break
-
-                        data[key]["card_id"] = pick
-
-                        if pick == -1.0:
-                            data[key]["sprite"].image.fill((0, 0, 0))
-                            layer.remove(data[key]["sprite"])
-                        else:
-                            data[key]["sprite"].set_image(pg.image.Splendor.noble_card[pick].copy())
-                            layer.add(data[key]["sprite"])
-
-                        screen.blit(pg.image.Splendor.background, (0, 0))
-                        layer.draw(screen)
-                        draw_dashed_rectangles(screen, data, [])
-                        pg.display.flip()
-                        return
-
-    elif key.startswith("lv_"):
+        pick = get_idx_from_list_pos(list_pos, 100)
+        data[key]["card_id"] = pick
+        if pick == -1.0:
+            data[key]["sprite"].image.fill((0, 0, 0))
+        else:
+            data[key]["sprite"].set_image(pg.image.Splendor.noble_card[pick].copy())
+            layer.add(data[key]["sprite"])
+        
+        draw_screen([])
+        pg.display.flip()
+        return
+    
+    def get_normal_card_idx(key, int_key_3):
         if key.endswith(".hide"):
             if data[key]["card_id"] == -1.0:
                 data[key]["card_id"] = 1
@@ -272,191 +288,81 @@ def get_user_input(key, data, screen, layer):
             else:
                 data[key]["card_id"] = -1.0
                 data[key]["sprite"].image.fill((0, 0, 0))
-                layer.remove(data[key]["sprite"])
-
-            screen.blit(pg.image.Splendor.background, (0, 0))
-            layer.draw(screen)
-            draw_dashed_rectangles(screen, data, [])
+            
+            draw_screen([])
             pg.display.flip()
-
         else:
-            layer.remove(data[key]["sprite"])
-            if key.startswith("lv_1"):
+            if int_key_3 == 1:
                 input_rect = pg.Surface((935, 790))
                 k = 8
                 num_card = 40
                 start = 0
                 _start = 25
-            elif key.startswith("lv_2"):
+            elif int_key_3 == 2:
                 input_rect = pg.Surface((705, 790))
                 k = 6
                 num_card = 30
                 start = 40
                 _start = 255
-            elif key.startswith("lv_3"):
+            elif int_key_3 == 3:
                 input_rect = pg.Surface((475, 790))
                 k = 4
                 num_card = 20
                 start = 70
                 _start = 485
-
+            
             list_pos = []
             for i in range(num_card):
                 a = i // k
                 b = i % k
                 list_pos.append((_start+115*b, 25+155*a))
-
-            screen.blit(pg.image.Splendor.background, (0, 0))
-            layer.draw(screen)
-            draw_dashed_rectangles(screen, data, [key])
+            
+            draw_screen([key])
             screen.blit(input_rect, (_start-15, 10))
             for i in range(num_card):
                 screen.blit(pg.image.Splendor.normal_card[i+start], list_pos[i])
             pg.display.flip()
 
-            while True:
-                for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
+            pick = get_idx_from_list_pos(list_pos, 140)
+            data[key]["card_id"] = pick + start
+            if pick == -1.0:
+                data[key]["card_id"] = -1.0
+                data[key]["sprite"].image.fill((0, 0, 0))
+            else:
+                data[key]["sprite"].set_image(pg.image.Splendor.normal_card[pick+start].copy())
 
-                    if event.type == pg.MOUSEBUTTONDOWN:
-                        if event.button == 1:
-                            mouse_pos = pg.mouse.get_pos()
-                            pick = -1.0
-                            for i in range(num_card):
-                                pos = list_pos[i]
-                                if pg.Rect(pos[0], pos[1], 100, 140).collidepoint(mouse_pos):
-                                    pick = i
-                                    break
+                layer.add(data[key]["sprite"])
+            
+            draw_screen([])
+            pg.display.flip()
 
-                            data[key]["card_id"] = pick + start
-
-                            if pick == -1.0:
-                                data[key]["card_id"] = -1.0
-                                data[key]["sprite"].image.fill((0, 0, 0))
-                                layer.remove(data[key]["sprite"])
-                            else:
-                                data[key]["sprite"].set_image(pg.image.Splendor.normal_card[pick+start].copy())
-                                layer.add(data[key]["sprite"])
-
-                            screen.blit(pg.image.Splendor.background, (0, 0))
-                            layer.draw(screen)
-                            draw_dashed_rectangles(screen, data, [])
-                            pg.display.flip()
-                            return
-
-    elif key.startswith("reserved"):
-        layer.remove(data[key]["sprite"])
+    if key.startswith("lv_"):
+        get_normal_card_idx(key, int(key[3]))
+        return
+    
+    if key.startswith("reserved"):
         input_rect = pg.Surface((500, 240))
         input_rect.fill((255, 255, 255))
         list_pos = []
         for i in range(3):
             list_pos.append((310+150*i, 410))
-
-        screen.blit(pg.image.Splendor.background, (0, 0))
-        layer.draw(screen)
-        draw_dashed_rectangles(screen, data, [key])
+        
+        draw_screen([key])
         screen.blit(input_rect, (260, 360))
         for i in range(3):
             screen.blit(pg.image.Splendor.hidden_card[i+1], list_pos[i])
         pg.display.flip()
 
-        is_running = True
-        while is_running:
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    pg.quit()
-                    sys.exit()
-                
-                if event.type == pg.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        mouse_pos = pg.mouse.get_pos()
-                        lv_pick = 0
-                        for i in range(3):
-                            pos = list_pos[i]
-                            if pg.Rect(pos[0], pos[1], 100, 140).collidepoint(mouse_pos):
-                                lv_pick = i + 1
-                                break
-                        
-                        is_running = False
-        
-        if lv_pick != 0:
-            if lv_pick == 1:
-                input_rect = pg.Surface((935, 790))
-                k = 8
-                num_card = 40
-                start = 0
-                _start = 25
-            elif lv_pick == 2:
-                input_rect = pg.Surface((705, 790))
-                k = 6
-                num_card = 30
-                start = 40
-                _start = 255
-            elif lv_pick == 3:
-                input_rect = pg.Surface((475, 790))
-                k = 4
-                num_card = 20
-                start = 70
-                _start = 485
-            
-            list_pos = []
-            for i in range(num_card):
-                a = i // k
-                b = i % k
-                list_pos.append((_start+115*b, 25+155*a))
-            
-            screen.blit(pg.image.Splendor.background, (0, 0))
-            layer.draw(screen)
-            draw_dashed_rectangles(screen, data, [key])
-            screen.blit(input_rect, (_start-15, 10))
-            for i in range(num_card):
-                screen.blit(pg.image.Splendor.normal_card[i+start], list_pos[i])
-            pg.display.flip()
-
-            while True:
-                for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
-                    
-                    if event.type == pg.MOUSEBUTTONDOWN:
-                        if event.button == 1:
-                            mouse_pos = pg.mouse.get_pos()
-                            pick = -1.0
-                            for i in range(num_card):
-                                pos = list_pos[i]
-                                if pg.Rect(pos[0], pos[1], 100, 140).collidepoint(mouse_pos):
-                                    pick = i
-                                    break
-                            
-                            data[key]["card_id"] = pick + start
-
-                            if pick == -1.0:
-                                data[key]["card_id"] = -1.0
-                                data[key]["sprite"].image.fill((0, 0, 0))
-                                layer.remove(data[key]["sprite"])
-                            else:
-                                data[key]["sprite"].set_image(pg.image.Splendor.normal_card[pick+start].copy())
-                                layer.add(data[key]["sprite"])
-                            
-                            screen.blit(pg.image.Splendor.background, (0, 0))
-                            layer.draw(screen)
-                            draw_dashed_rectangles(screen, data, [])
-                            pg.display.flip()
-                            return
-        
+        lv_pick = get_idx_from_list_pos(list_pos, 140) + 1
+        if type(lv_pick) == int:
+            get_normal_card_idx(key, lv_pick)
+            return
         else:
             data[key]["card_id"] = -1.0
             data[key]["sprite"].image.fill((0, 0, 0))
-            layer.remove(data[key]["sprite"])
-            screen.blit(pg.image.Splendor.background, (0, 0))
-            layer.draw(screen)
-            draw_dashed_rectangles(screen, data, [])
+            draw_screen([])
             pg.display.flip()
             return
-
 
 #
 def convert_data_to_state(data):
@@ -548,38 +454,87 @@ def convert_data_to_state(data):
     
     return p_state
 
-#
+
+def get_action_from_agent(p_state, list_action_done):
+    """
+    True = hết turn
+    False = tiếp tục action
+    """
+    action, agent.perfile = agent.test(p_state, agent.perfile)
+    list_action_done.append(action)
+    if action >= 31 and action <= 35: # Action lấy nguyên liệu
+        b_infor = p_state[0:6]
+        token_got = p_state[148:153]
+        token_got[action-31] += 1
+        sum_got = np.sum(token_got)
+        if sum_got == 1: # Chỉ còn đúng loại nl vừa lấy nhưng sl < 3
+            if b_infor[action-31] < 3 and (np.sum(b_infor[:5]) - b_infor[action-31]) == 0:
+                return True
+        elif sum_got == 2: # Lấy double, hoặc không còn nl nào khác 2 cái vừa lấy
+            if np.max(token_got) == 2 or (np.sum(b_infor[:5]) - np.sum(b_infor[np.where(token_got>0)[0]])) == 0:
+                return True
+        else: # sum(token_got) = 3
+            return True
+        
+        return False
+    elif action >= 36 and action <= 41: # Action trả nguyên liệu
+        p_infor = p_state[6:12]
+        p_infor[action-36] -= 1
+        if np.sum(p_infor) > 10:
+            return False
+    
+    elif action >= 16 and action <= 30: # Action úp thẻ
+        p_infor = p_state[6:12]
+        b_infor = p_state[0:6]
+        if b_infor[5] > 0:
+            p_infor[5] += 1
+            b_infor[5] -= 1
+        
+        if np.sum(p_infor) > 10:
+            return False
+
+    return True
+
+
 while True:
     for event in pg.event.get():
-        if event.type == pg.QUIT:
-            pg.quit()
-            sys.exit()
-
-        if event.type == pg.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                mouse_pos = pg.mouse.get_pos()
-                for key in data.keys():
-                    if data[key]["sprite"].rect.collidepoint(mouse_pos[0], mouse_pos[1]):
-                        get_user_input(key, data, screen, layer)
-                        print(key, data[key])
-                        break
-                else:
-                    print(mouse_pos)
+        if_press_quit_button(event)
         
-        elif event.type == pg.KEYDOWN:
-            if event.key == pg.K_KP_ENTER or event.key == pg.K_RETURN:
-                p_state = convert_data_to_state(data)
+        if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_pos = pg.mouse.get_pos()
+            key = get_key(mouse_pos, data)
+            if key == "Nothing":
+                print(mouse_pos)
+            else:
+                print(key, end=" ")
+                get_user_edit(key, data, screen, layer)
                 try:
-                    action, agent.perfile = agent.test(p_state, agent.perfile)
+                    print("card_id:", data[key]["card_id"])
+                except:
+                    print("num:", data[key]["num"])
+            break
+        elif event.type == pg.KEYDOWN and (event.key == pg.K_KP_ENTER or event.key == pg.K_RETURN):
+            p_state = convert_data_to_state(data)
+            list_action_done = []
+            try:
+                while True:
+                    if get_action_from_agent(p_state, list_action_done):
+                        break
+                
+                print("-------------------------")
+                for action in list_action_done:
                     print(f"Action: {action}: ", end="")
                     if action == 0:
                         print("Bỏ lượt")
                     elif action >= 1 and action <= 12:
-                        print("Mở thẻ trên bàn có thông tin như sau:", p_state[11+7*action:18+7*action].astype(int))
+                        card_infor = p_state[11+7*action:18+7*action].astype(int)
+                        print("Mở thẻ trên bàn có thông tin như sau:", "Điểm", card_infor[0], ", Discount", list_stock_name[card_infor[1]], ", Price", card_infor[2:7])
                     elif action >= 13 and action <= 15:
-                        print("Mở thẻ đang giữ có thông tin như sau:", p_state[127+7*(action-13):134+7*(action-13)].astype(int))
+                        card_infor = p_state[127+7*(action-13):134+7*(action-13)].astype(int)
+                        print("Mở thẻ đang giữ có thông tin như sau:", "Điểm", card_infor[0], ", Discount", list_stock_name[card_infor[1]], ", Price", card_infor[2:7])
                     elif action >= 16 and action <= 27:
-                        print("Úp thẻ trên bàn có thông tin như sau:", p_state[18+7*(action-16):25+7*(action-16)].astype(int))
+                        card_infor = p_state[18+7*(action-16):25+7*(action-16)].astype(int)
+                        print("Úp thẻ trên bàn có thông tin như sau:", "Điểm", card_infor[0], ", Discount", list_stock_name[card_infor[1]], ", Price", card_infor[2:7])
                     elif action >= 28 and action <= 30:
                         print("Úp thẻ ẩn cấp ", action-27)
                     elif action >= 31 and action <= 35:
@@ -588,6 +543,8 @@ while True:
                         print("Trả nguyên liệu", list_stock_name[action-36])
                     else:
                         raise Exception("Action không hợp lệ.")
-                except:
-                    print("\nCó vẻ như state không hợp lệ, hàm getValidActions đang không thể render ra action nào.\n")
+                print("-------------------------")
+            except:
+                print("\nCó vẻ như bàn chơi hiện tại không hợp lệ nên Agent không thẻ render ra các actions.\n")
+    
     clock.tick(60)
