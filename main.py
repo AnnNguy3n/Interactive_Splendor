@@ -465,6 +465,7 @@ def get_action_from_agent(p_state, list_action_done):
     if action >= 31 and action <= 35: # Action lấy nguyên liệu
         b_infor = p_state[0:6]
         token_got = p_state[148:153]
+        b_infor[action-31] -= 1
         token_got[action-31] += 1
         sum_got = np.sum(token_got)
         if sum_got == 1: # Chỉ còn đúng loại nl vừa lấy nhưng sl < 3
