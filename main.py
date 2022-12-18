@@ -497,6 +497,31 @@ def get_action_from_agent(p_state, list_action_done):
     return True
 
 
+def sub_f():
+    global p_state
+    p_state = p_state.astype(int)
+    p_tokens = p_state[6:12]
+    p_discounts = p_state[12:17]
+    p_score = p_state[17]
+    card_price = card_infor[-5:]
+    nl_bo_ra = (card_price > p_discounts) * (card_price - p_discounts)
+    nl_bt = np.minimum(nl_bo_ra, p_tokens[0:5])
+    nl_gold = np.sum(nl_bo_ra - nl_bt)
+    p_tokens[0:5] -= nl_bt
+    p_tokens[5] -= nl_gold
+    p_discounts[card_infor[1]] += 1
+    p_score += card_infor[0]
+    for i in range(5):
+        data[f"player_token.{list_stock_name[i]}"]["num"] = p_tokens[i]
+        data[f"player_token.{list_stock_name[i]}"]["sprite"].set_value(p_tokens[i])
+        data[f"discount.{list_stock_name[i]}"]["num"] = p_discounts[i]
+        data[f"discount.{list_stock_name[i]}"]["sprite"].set_value(p_discounts[i])
+    data[f"player_token.{list_stock_name[5]}"]["num"] = p_tokens[5]
+    data[f"player_token.{list_stock_name[5]}"]["sprite"].set_value(p_tokens[5])
+    data["score.0"]["num"] = p_score
+    data["score.0"]["sprite"].set_value(p_score)
+
+
 while True:
     for event in pg.event.get():
         if_press_quit_button(event)
@@ -530,18 +555,72 @@ while True:
                     elif action >= 1 and action <= 12:
                         card_infor = p_state[11+7*action:18+7*action].astype(int)
                         print("Mở thẻ trên bàn có thông tin như sau:", "Điểm", card_infor[0], ", Discount", list_stock_name[card_infor[1]], ", Price", card_infor[2:7])
+                        sub_f()
+                        draw_screen([])
+                        pg.display.flip()
                     elif action >= 13 and action <= 15:
                         card_infor = p_state[127+7*(action-13):134+7*(action-13)].astype(int)
                         print("Mở thẻ đang giữ có thông tin như sau:", "Điểm", card_infor[0], ", Discount", list_stock_name[card_infor[1]], ", Price", card_infor[2:7])
+                        sub_f()
+                        for i in range(90):
+                            if (card_infor == env.normal_cards_infor[i]).all():
+                                card_id = i
+                                break
+                        for i in range(3):
+                            if data[f"reserved.{i}"]["card_id"] == card_id:
+                                data[f"reserved.{i}"]["card_id"] = -1.0
+                                data[f"reserved.{i}"]["sprite"].image.fill((0, 0, 0))
+                                layer.remove(data[f"reserved.{i}"]["sprite"])
+                                break
+                        draw_screen([])
+                        pg.display.flip()
                     elif action >= 16 and action <= 27:
                         card_infor = p_state[18+7*(action-16):25+7*(action-16)].astype(int)
                         print("Úp thẻ trên bàn có thông tin như sau:", "Điểm", card_infor[0], ", Discount", list_stock_name[card_infor[1]], ", Price", card_infor[2:7])
+                        for i in range(90):
+                            if (card_infor == env.normal_cards_infor[i]).all():
+                                card_id = i
+                                break
+                        for i in range(3):
+                            if type(data[f"reserved.{i}"]["card_id"]) == float:
+                                data[f"reserved.{i}"]["card_id"] = card_id
+                                data[f"reserved.{i}"]["sprite"].set_image(pg.image.Splendor.normal_card[card_id].copy())
+                                layer.add(data[f"reserved.{i}"]["sprite"])
+                                break
+                        p_state = p_state.astype(int)
+                        p_tokens = p_state[6:12]
+                        data[f"player_token.{list_stock_name[5]}"]["num"] = p_tokens[5]
+                        data[f"player_token.{list_stock_name[5]}"]["sprite"].set_value(p_tokens[5])
+                        draw_screen([])
+                        pg.display.flip()
                     elif action >= 28 and action <= 30:
                         print("Úp thẻ ẩn cấp ", action-27)
+                        p_state = p_state.astype(int)
+                        p_tokens = p_state[6:12]
+                        data[f"player_token.{list_stock_name[5]}"]["num"] = p_tokens[5]
+                        data[f"player_token.{list_stock_name[5]}"]["sprite"].set_value(p_tokens[5])
+                        draw_screen([])
+                        pg.display.flip()
                     elif action >= 31 and action <= 35:
                         print("Lấy nguyên liệu", list_stock_name[action-31])
+                        p_state = p_state.astype(int)
+                        p_tokens = p_state[6:12]
+                        p_tokens[action-31] += 1
+                        data[f"player_token.{list_stock_name[action-31]}"]["num"] = p_tokens[action-31]
+                        data[f"player_token.{list_stock_name[action-31]}"]["sprite"].set_value(p_tokens[action-31])
+                        draw_screen([])
+                        pg.display.flip()
                     elif action >= 36 and action <= 41:
                         print("Trả nguyên liệu", list_stock_name[action-36])
+                        p_state = p_state.astype(int)
+                        p_tokens = p_state[6:12]
+                        for i in range(5):
+                            data[f"player_token.{list_stock_name[i]}"]["num"] = p_tokens[i]
+                            data[f"player_token.{list_stock_name[i]}"]["sprite"].set_value(p_tokens[i])
+                        data[f"player_token.{list_stock_name[5]}"]["num"] = p_tokens[5]
+                        data[f"player_token.{list_stock_name[5]}"]["sprite"].set_value(p_tokens[5])
+                        draw_screen([])
+                        pg.display.flip()
                     else:
                         raise Exception("Action không hợp lệ.")
                 print("-------------------------")
